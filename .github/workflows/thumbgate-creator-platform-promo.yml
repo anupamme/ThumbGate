@@ -41,6 +41,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
+      REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+      REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+      REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
+      REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
+      REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
       ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
       ZERNIO_INSTAGRAM_ACCOUNT_ID: ${{ secrets.ZERNIO_INSTAGRAM_ACCOUNT_ID }}
       ZERNIO_LINKEDIN_ACCOUNT_ID: ${{ secrets.ZERNIO_LINKEDIN_ACCOUNT_ID }}
@@ -57,11 +62,101 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Repost corrected r/ClaudeAI showcase
+        if: github.event.inputs.mode == 'preview' && github.event.inputs.offer == 'reddit-claudeai-repost'
+        run: |
+          node <<'NODE'
+          const required = [
+            'REDDIT_CLIENT_ID',
+            'REDDIT_CLIENT_SECRET',
+            'REDDIT_USERNAME',
+            'REDDIT_PASSWORD',
+          ];
+          const missing = required.filter((key) => !process.env[key]);
+          if (missing.length) {
+            throw new Error(`Missing Reddit secrets: ${missing.join(', ')}`);
+          }
+
+          const username = process.env.REDDIT_USERNAME;
+          const userAgent = process.env.REDDIT_USER_AGENT || `thumbgate/1.27.17 by ${username}`;
+          const title = 'I built a Claude Code gate for turning repeated agent mistakes into pre-tool-call checks';
+          const text = [
+            'I built ThumbGate after running into the same Claude Code failure pattern over and over: an agent would "remember" a mistake, but still repeat the bad move when the next tool call happened.',
+            '',
+            'ThumbGate is a local MCP / PreToolUse gate. It captures explicit feedback, turns repeated failures into concrete prevention rules, and blocks the matching tool call before it touches the repo, shell, generated file, or publishing workflow again.',
+            '',
+            'Claude Code helped build and test the workflow: I used it to iterate on the hook wiring, generate reproducible failure cases, and verify that a bad action gets blocked before execution rather than merely logged after the damage.',
+            '',
+            'It is free to try locally:',
+            '`npx thumbgate init`',
+            '',
+            'Project link:',
+            'https://github.com/IgorGanapolsky/ThumbGate',
+            '',
+            'What I am trying to solve is the team version of this problem: personal mistakes are useful, but promoting every local rule into org policy gets brittle fast. My current pattern is local capture -> local pre-action gate -> proof the block works -> only then promote generalized rules to the team.',
+            '',
+            'Curious how other Claude Code users handle this: do your guardrails stay personal, or do you promote them into shared team policy once they prove reusable?',
+          ].join('\n');
+
+          const credentials = Buffer.from(
+            `${process.env.REDDIT_CLIENT_ID}:${process.env.REDDIT_CLIENT_SECRET}`
+          ).toString('base64');
+          const tokenRes = await fetch('https://www.reddit.com/api/v1/access_token', {
+            method: 'POST',
+            headers: {
+              Authorization: `Basic ${credentials}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'User-Agent': userAgent,
+            },
+            body: new URLSearchParams({
+              grant_type: 'password',
+              username,
+              password: process.env.REDDIT_PASSWORD,
+            }),
+          });
+          if (!tokenRes.ok) {
+            throw new Error(`Reddit token endpoint failed with HTTP ${tokenRes.status}`);
+          }
+          const tokenJson = await tokenRes.json();
+          if (tokenJson.error || !tokenJson.access_token) {
+            throw new Error(`Reddit token error: ${tokenJson.error || 'missing_access_token'}`);
+          }
+
+          const submitRes = await fetch('https://oauth.reddit.com/api/submit', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${tokenJson.access_token}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'User-Agent': userAgent,
+            },
+            body: new URLSearchParams({
+              kind: 'self',
+              sr: 'ClaudeAI',
+              title,
+              text,
+              resubmit: 'true',
+              nsfw: 'false',
+              spoiler: 'false',
+            }),
+          });
+          if (!submitRes.ok) {
+            throw new Error(`Reddit submit failed with HTTP ${submitRes.status}`);
+          }
+          const submitJson = await submitRes.json();
+          const errors = submitJson.json?.errors || [];
+          if (errors.length) {
+            throw new Error(`Reddit submit errors: ${JSON.stringify(errors)}`);
+          }
+          const data = submitJson.json?.data || {};
+          console.log(`POSTED_URL=${data.url || data.name || 'unknown'}`);
+          NODE
+
       - name: Install dependencies
+        if: github.event.inputs.offer != 'reddit-claudeai-repost'
         run: npm ci --onnxruntime-node-install-cuda=skip
 
       - name: Preview campaign
-        if: github.event.inputs.mode == 'preview'
+        if: github.event.inputs.mode == 'preview' && github.event.inputs.offer != 'reddit-claudeai-repost'
         run: |
           npm run social:publish:launch -- \
             --dry-run \
