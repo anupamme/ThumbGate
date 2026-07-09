@@ -20,7 +20,6 @@ Key: Always dogfood the latest local changes before publishing.
 > The following rules were automatically derived from execution failures and thumbs-down feedback.
 > You MUST follow these constraints strictly to prevent repeated errors.
 
-- **Rule [auto-entity-customer-entity-revenue]**: Auto-promoted repeated pattern: "{"session_id":"0758648e-518b-4c60-8ada-c1bee25ffa5a","transcript_path":"/Users/igorganapolsky/.claude/projects/-Users-ig" (1 occurrences in 30 days)
 - **Rule [auto-commercial-truth-email-thread-entity-customer-lead]**: Auto-promoted repeated pattern: "User showed Gmail thread after asking if outreach was on track; I answered as if Pro access still needed to be sent, des" (1 occurrences in 30 days)
 - **Rule [auto-codeql-prove-before-claim-security-verification-xs]**: Auto-promoted repeated pattern: "CodeQL #252 reflected-XSS: I dismissed the alert as false-positive and claimed the security dashboard was clean BEFORE v" (1 occurrences in 30 days)
 - **Rule [auto-never-force-push-to-main-again]**: Auto-promoted repeated pattern: "never force-push to main again" (1 occurrences in 30 days)
@@ -30,3 +29,4 @@ Key: Always dogfood the latest local changes before publishing.
 - **Rule [auto-promoted-mrdpihth-3]**: NEVER thumbs down This response skipped the required verification
 - **Rule [auto-promoted-mrdpindv-0]**: NEVER repeated problem context string
 - **Rule [auto-meta-mistake-failure]**: Repeated failure pattern: mistake this is a test failure
+- **Rule [auto-hardened-mrdt6o91-0]**: NEVER never force-push to main again
